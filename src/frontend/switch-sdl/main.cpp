@@ -17,7 +17,7 @@
 */
 
 // Minimal Nintendo Switch frontend (SDL2, software renderer, FreeBIOS direct boot).
-// Config: sdmc:/switch/melonDS-Switch/config.txt (also threaded3d=0|1), one "key=value" per line:
+// Config: sdmc:/switch/Honeydew/config.txt (also threaded3d=0|1), one "key=value" per line:
 //   rom=<path of the .nds>   sav=<path of the save file>   jit=0|1   overclock=<MHz, 0 = off, auto>   gpuclock=<MHz, 0 = system default>
 //   audiointerp=0..4 (none, linear, cosine, cubic, gaussian; default 3)   autosave=0|1   autoload=1|0 (default on)   loadslot=0..4 (state loaded at start)   jitblock=1..256 (default 32) jitliteral=0|1 jitbranch=0|1   itercycles=16..512 (main-loop step, default 128; melonDS uses 64)   audioctl=0|1   audioskew=<ratio>   audiodump=<seconds>   sampler=<seconds> (sampling profiler, samples.bin)
 // Save states (next to the config, named after the ROM: <rom>.ss<slot>, slot 0 = automatic):
@@ -27,7 +27,7 @@
 //   turned off: ui.txt layoutkeys=0, or Settings / menu > Display); more in
 //   the menu (Affichage). The top screen is shown alone while the bottom one is black (can be turned off).
 //   The state is also saved automatically on exit (slot 0) and loaded at start.
-// Every second a line "t fps avg_ms max_ms" is appended to sdmc:/switch/melonDS-Switch/log.txt.
+// Every second a line "t fps avg_ms max_ms" is appended to sdmc:/switch/Honeydew/log.txt.
 // Touch without the touch screen (docked): the right stick moves a cursor over the bottom screen, hold the right stick click to touch.
 // The left stick works as the D-pad.
 // Quit: ZL + ZR + B, or the menu (L + R + PLUS + MINUS goes to the game: soft reset in many games).
@@ -36,6 +36,7 @@
 #include <lz4.h>
 #include <stdlib.h>
 #include <string.h>
+#include <strings.h>
 #include <sys/stat.h>
 
 #include <algorithm>
@@ -94,8 +95,12 @@ static std::atomic<int> DebugFrames {0};
 static void MemLog(const char* label);
 #define memlog(label) MemLog(label)
 
-static const char* ConfigDir = "sdmc:/switch/melonDS-Switch";
-static const char* OldConfigDir = "sdmc:/switch/melonds-fork";   // before version 0.2: its files are moved at start
+static const char* ConfigDir = "sdmc:/switch/Honeydew";
+// folders of the earlier names of this port: their files are moved into ConfigDir at start
+static const char* const OldConfigDirs[] = {
+    "sdmc:/switch/melonDS-Switch",   // versions 0.2 to 0.4 ("melonDS Switch")
+    "sdmc:/switch/melonds-fork",     // before version 0.2
+};
 #ifndef SWITCH_APP_VERSION
 #define SWITCH_APP_VERSION "dev"
 #endif
@@ -185,7 +190,7 @@ static void SamplerThread(void* arg)
         if (R_FAILED(rc)) { st->Failures++; continue; }
         st->Samples.insert(st->Samples.end(), rec, rec + 10);
     }
-    if (FILE* f = fopen("sdmc:/switch/melonDS-Switch/samples.bin", "wb"))
+    if (FILE* f = fopen((std::string(ConfigDir) + "/samples.bin").c_str(), "wb"))
     {
         fwrite("SMP3", 1, 4, f);
         fwrite(st->Samples.data(), sizeof(u64), st->Samples.size(), f);
@@ -332,17 +337,17 @@ int main(int argc, char** argv)
             PadState pad;
             padInitializeAny(&pad);
             // ASCII only: the font of the libnx console has no accented letters
-            printf("\n\n\x1b[36m  melonDS Switch " SWITCH_APP_VERSION "\x1b[0m\n\n"
-                   "  melonDS Switch a ete lance depuis l'Album (mode applet) :\n"
+            printf("\n\n\x1b[36m  Honeydew " SWITCH_APP_VERSION "\x1b[0m\n\n"
+                   "  Honeydew a ete lance depuis l'Album (mode applet) :\n"
                    "  ce mode ne laisse pas assez de memoire a l'emulateur.\n\n"
                    "  Lancez-le en mode application :\n"
                    "   1. Dans le menu HOME, maintenez R en lancant un jeu (n'importe lequel).\n"
                    "   2. Gardez R maintenu en choisissant l'utilisateur.\n"
-                   "   3. Le menu des homebrews s'ouvre : lancez melonDS Switch.\n\n"
+                   "   3. Le menu des homebrews s'ouvre : lancez Honeydew.\n\n"
                    "  ---\n\n"
                    "  Started from the Album (applet mode): not enough memory. Hold R while\n"
                    "  starting any game from the HOME menu (and while choosing the user),\n"
-                   "  then start melonDS Switch from the homebrew menu.\n\n"
+                   "  then start Honeydew from the homebrew menu.\n\n"
                    "\x1b[36m  Appuyez sur un bouton pour quitter / press any button to quit.\x1b[0m\n");
             consoleUpdate(nullptr);
             while (appletMainLoop())
@@ -357,19 +362,27 @@ int main(int argc, char** argv)
     }
 
     mkdir(ConfigDir, 0777);
-    // settings, saves and states of the versions before 0.2 (sdmc:/switch/melonds-fork): moved here, existing files kept
+    // settings, saves and states of the earlier versions (OldConfigDirs): moved here, existing files kept;
+    // the old .nro stays where it is (hbmenu lists it until the user deletes it)
     int movedFiles = 0;
-    if (DIR* d = opendir(OldConfigDir))
+    std::string movedFrom;
+    for (const char* oldDir : OldConfigDirs)
     {
+        DIR* d = opendir(oldDir);
+        if (!d) continue;
+        int moved = 0;
         while (dirent* e = readdir(d))
         {
-            if (!strcmp(e->d_name, ".") || !strcmp(e->d_name, "..") || !strcmp(e->d_name, "melonds-fork.nro")) continue;
-            std::string from = std::string(OldConfigDir) + "/" + e->d_name, to = std::string(ConfigDir) + "/" + e->d_name;
+            size_t n = strlen(e->d_name);
+            if (!strcmp(e->d_name, ".") || !strcmp(e->d_name, "..")) continue;
+            if (n > 4 && !strcasecmp(e->d_name + n - 4, ".nro")) continue;
+            std::string from = std::string(oldDir) + "/" + e->d_name, to = std::string(ConfigDir) + "/" + e->d_name;
             struct stat st;
-            if (stat(to.c_str(), &st) != 0 && rename(from.c_str(), to.c_str()) == 0) movedFiles++;
+            if (stat(to.c_str(), &st) != 0 && rename(from.c_str(), to.c_str()) == 0) moved++;
         }
         closedir(d);
-        rmdir(OldConfigDir);   // only if empty
+        rmdir(oldDir);   // only if empty
+        if (moved) { movedFiles += moved; movedFrom += movedFrom.empty() ? oldDir : std::string(", ") + oldDir; }
     }
     SwitchLogPath = std::string(ConfigDir) + "/log.txt";
     melonDS::SwitchCrashLogPath = SwitchLogPath.c_str();
@@ -396,8 +409,8 @@ int main(int argc, char** argv)
     // defaults (best measured setup); config.txt overrides, then ui.txt (menu), then the defaults below
     auto ui0 = ReadConfig("ui.txt");
     const bool useJit = !cfg.count("jit") || cfg["jit"] != "0";
-    logf("=== melonDS Switch %s start, jit=%d ===\n", SWITCH_APP_VERSION, useJit ? 1 : 0);
-    if (movedFiles) logf("moved %d files from %s\n", movedFiles, OldConfigDir);
+    logf("=== Honeydew %s start, jit=%d ===\n", SWITCH_APP_VERSION, useJit ? 1 : 0);
+    if (movedFiles) logf("moved %d files from %s\n", movedFiles, movedFrom.c_str());
 
     // optional CPU overclock (off by default), restored on exit
     ClkrstSession cpuSession {};
@@ -1161,7 +1174,7 @@ int main(int argc, char** argv)
             // panel on the left: on the display page the screens stay visible behind
             Ui::Fill(renderer, 0, 0, 1280, 720, 10, 14, 22, page == PageDisplay ? 60 : 140);
             Ui::Fill(renderer, 0, 0, 620, 720, 35, 38, 44, 242);
-            static const char* const titles[] = {"melonDS Switch", "Affichage", "Performances", "États"};
+            static const char* const titles[] = {"Honeydew", "Affichage", "Performances", "États"};
             Ui::DrawText(renderer, titles[page], 40, 22, Ui::Text, Ui::Big);
             if (page == PageStates)
             {
@@ -1179,7 +1192,7 @@ int main(int argc, char** argv)
                 else
                     Ui::DrawText(renderer, "État " + std::to_string(sl) + " : aucune image", 952, 380, Ui::TextDim, Ui::Small, 380, 1);
             }
-            if (page == PageMain) Ui::DrawText(renderer, SWITCH_APP_VERSION, 40 + Ui::TextWidth("melonDS Switch", Ui::Big) + 12, 36, Ui::TextDim, Ui::Small);
+            if (page == PageMain) Ui::DrawText(renderer, SWITCH_APP_VERSION, 40 + Ui::TextWidth("Honeydew", Ui::Big) + 12, 36, Ui::TextDim, Ui::Small);
             Ui::Fill(renderer, 20, 84, 580, 1, 90, 96, 106);
             Ui::DrawList(renderer, items, pageSt[page], 16, 96, 580, 10, 54);
             Ui::Fill(renderer, 20, 646, 580, 1, 90, 96, 106);

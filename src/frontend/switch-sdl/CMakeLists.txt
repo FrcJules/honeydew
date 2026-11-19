@@ -3,10 +3,11 @@ cmake_minimum_required(VERSION 3.16)
 find_package(Threads REQUIRED)
 find_package(SDL2 REQUIRED)
 
-set(SWITCH_APP_NAME "melonDS Switch" CACHE STRING "Title shown in hbmenu")
-set(SWITCH_APP_VERSION "0.4.1" CACHE STRING "Version shown in hbmenu and in the menu")
+set(SWITCH_APP_NAME "Honeydew" CACHE STRING "Title shown in hbmenu")
+set(SWITCH_APP_AUTHOR "FrcJules" CACHE STRING "Author shown in hbmenu")
+set(SWITCH_APP_VERSION "0.5.0" CACHE STRING "Version shown in hbmenu and in the menu")
 
-add_executable(melonDS-switch
+add_executable(honeydew
     main.cpp
     Gfx.cpp
     Controls.cpp
@@ -18,7 +19,7 @@ add_executable(melonDS-switch
     ../ScreenLayout.cpp
     Platform.cpp
 )
-target_compile_definitions(melonDS-switch PRIVATE SWITCH_APP_VERSION="${SWITCH_APP_VERSION}")
+target_compile_definitions(honeydew PRIVATE SWITCH_APP_VERSION="${SWITCH_APP_VERSION}")
 
 # timing profilers (prof=/glprof= columns of the log); they read the system counter in the hot loops
 option(SWITCH_PROFILE "Build the emulation-loop and GL profilers (MELONDS_PROF, MELONDS_GL_PROFILE)" ON)
@@ -43,15 +44,15 @@ if (SWITCH_PROFILE)
     target_compile_definitions(core PUBLIC MELONDS_PROF)
 endif()
 
-target_include_directories(melonDS-switch PRIVATE ${SDL2_INCLUDE_DIRS})
-target_link_libraries(melonDS-switch PRIVATE core Threads::Threads SDL2_ttf freetype harfbuzz png16 bz2 z lz4 ${SDL2_LIBRARIES} EGL GLESv2 glapi drm_nouveau nx)
+target_include_directories(honeydew PRIVATE ${SDL2_INCLUDE_DIRS})
+target_link_libraries(honeydew PRIVATE core Threads::Threads SDL2_ttf freetype harfbuzz png16 bz2 z lz4 ${SDL2_LIBRARIES} EGL GLESv2 glapi drm_nouveau nx)
 
 # .nro (needs devkitPro: nacptool, elf2nro)
 find_program(NACPTOOL nacptool HINTS $ENV{DEVKITPRO}/tools/bin)
 find_program(ELF2NRO elf2nro HINTS $ENV{DEVKITPRO}/tools/bin)
 if (NACPTOOL AND ELF2NRO)
-    add_custom_command(TARGET melonDS-switch POST_BUILD
-        COMMAND ${NACPTOOL} --create "${SWITCH_APP_NAME}" "FrcJules" "${SWITCH_APP_VERSION}" melonDS-switch.nacp
-        COMMAND ${ELF2NRO} $<TARGET_FILE:melonDS-switch> melonDS-switch.nro --nacp=melonDS-switch.nacp --icon=${CMAKE_CURRENT_SOURCE_DIR}/icon.jpg
-        COMMENT "Creating melonDS-switch.nro")
+    add_custom_command(TARGET honeydew POST_BUILD
+        COMMAND ${NACPTOOL} --create "${SWITCH_APP_NAME}" "${SWITCH_APP_AUTHOR}" "${SWITCH_APP_VERSION}" honeydew.nacp
+        COMMAND ${ELF2NRO} $<TARGET_FILE:honeydew> honeydew.nro --nacp=honeydew.nacp --icon=${CMAKE_CURRENT_SOURCE_DIR}/icon.jpg
+        COMMENT "Creating honeydew.nro")
 endif()

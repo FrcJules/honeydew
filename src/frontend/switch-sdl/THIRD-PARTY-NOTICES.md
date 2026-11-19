@@ -1,4 +1,4 @@
-# Third-party software in melonDS Switch
+# Third-party software in Honeydew
 
 The `.nro` is a static link of melonDS (GPL-3.0-or-later) and the libraries below. Their license texts must ship with
 binary releases (folder `licenses/` of the release archive).

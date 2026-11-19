@@ -1,8 +1,11 @@
-# melonDS Switch (unofficial fork)
+<p align="center"><img src="../../../res/honeydew/banner.png" alt="Honeydew" width="640"></p>
 
-Nintendo DS emulator for the Nintendo Switch (homebrew), based on the current melonDS core (1.x).
+# Honeydew
+
+**Nintendo DS emulator for Switch, based on melonDS (GPL-3.0).**
+Homebrew for the Nintendo Switch, built on the current melonDS core (1.x).
 **Unofficial**: not made or supported by the melonDS team. Please do not report its bugs to them.
-The official, older port is `melonDS-emu/melonDS-switch`.
+Honeydew was called "melonDS Switch" up to version 0.4.1; it is not the official, older port `melonDS-emu/melonDS-switch`.
 
 **AI disclosure**: the Switch frontend and the changes made for this port were written with an AI assistant (Claude),
 directed and tested on real hardware by FrcJules. The emulation core is melonDS (GPL-3.0), with a few small fixes (see below).
@@ -38,12 +41,13 @@ Pokémon Diamond, Professor Layton and the Curious Village, StarFox Command, Met
 Firmware 20.2.0 / Atmosphère.
 
 ## Install
-Copy `switch/melonDS-Switch/melonDS-Switch.nro` to `sdmc:/switch/melonDS-Switch/`.
+Copy `switch/Honeydew/honeydew.nro` to `sdmc:/switch/Honeydew/`.
 **Run hbmenu in application mode** (hold R while starting a game, also when choosing the user): the applet mode
 (album) does not have enough memory; started from there, the app shows how to do it and quits.
 Your games (`.nds` files you dumped yourself) can be anywhere; the file browser starts in `sdmc:/roms/nds` if it exists.
-Settings, saves and states are in `sdmc:/switch/melonDS-Switch/` (files of the older `melonds-fork` folder are moved
-there automatically).
+Settings, saves and states are in `sdmc:/switch/Honeydew/`. **Coming from melonDS Switch (0.4.1 or older)**: at the first
+start, the files of `sdmc:/switch/melonDS-Switch/` (and of the even older `melonds-fork` folder) are moved there
+automatically, existing files are kept. You can then delete the old `melonDS-Switch.nro`.
 
 ## Controls
 | | |
@@ -57,7 +61,7 @@ there automatically).
 | ZL + ZR + B | quit (the state is saved in slot 0 and reloaded next time); also in the menu |
 | L + R + PLUS + MINUS | goes to the game (soft reset to the title screen in many games) |
 
-## Files (`sdmc:/switch/melonDS-Switch/`)
+## Files (`sdmc:/switch/Honeydew/`)
 | File | |
 |---|---|
 | `config.txt` | optional: `rom=` `romdir=` `overclock=<MHz>\|auto` `gpu=0\|1` `gpuscale=1..3` `autosave=0\|1` `autoload=0\|1` ... (see the top of `main.cpp`) |
@@ -69,16 +73,16 @@ there automatically).
 | `log.txt` | one line per second (fps, CPU clock, temperature...) |
 
 ## Open a game from Sphaira (file association)
-melonDS Switch accepts a ROM as its first argument and starts it directly (the automatic state is loaded, as with "Continue").
-To open `.nds` files from Sphaira's file browser, create `sdmc:/config/sphaira/assoc/melonDS-Switch.ini`:
+Honeydew accepts a ROM as its first argument and starts it directly (the automatic state is loaded, as with "Continue").
+To open `.nds` files from Sphaira's file browser, create `sdmc:/config/sphaira/assoc/Honeydew.ini`:
 
 ```
 [config]
-path=/switch/melonDS-Switch/melonDS-Switch.nro
+path=/switch/Honeydew/honeydew.nro
 supported_extensions=nds|dsi
 ```
 
-Then press A on a ROM in Sphaira's file browser and choose "melonDS-Switch". Tested with Sphaira 1.0.8.
+Then press A on a ROM in Sphaira's file browser and choose "Honeydew". Tested with Sphaira 1.0.8.
 
 ## Build
 devkitPro (devkitA64, libnx, portlibs `switch-sdl2`, `switch-sdl2_ttf`, `switch-freetype`, `switch-harfbuzz`,
@@ -88,9 +92,9 @@ cmake -S . -B build-switch -DCMAKE_TOOLCHAIN_FILE=$DEVKITPRO/cmake/Switch.cmake 
       -DENABLE_OGLRENDERER=ON -DENABLE_OGL_COMPUTE=OFF -DSWITCH_PROFILE=OFF \
       "-DCMAKE_CXX_FLAGS_RELEASE=-O3 -DNDEBUG -flto=1" "-DCMAKE_C_FLAGS_RELEASE=-O3 -DNDEBUG -flto=1" \
       -DCMAKE_EXE_LINKER_FLAGS_RELEASE=-flto=1 -DMELONDS_LTO_EXCLUDE_DMA=ON -DMELONDS_LTO_EXCLUDE_GL=ON
-cmake --build build-switch --target melonDS-switch
+cmake --build build-switch --target honeydew
 ```
-Result: `build-switch/src/frontend/switch-sdl/melonDS-switch.nro`.
+Result: `build-switch/src/frontend/switch-sdl/honeydew.nro`.
 
 ## Core changes
 Besides the frontend: geometry and JIT speed-ups (output identical, checked with fixed-rate audio recordings), a
@@ -111,6 +115,7 @@ The screen layouts use the melonDS `ScreenLayout` code (from its desktop fronten
 was inspired by RSDuck's earlier Switch port (`RSDuck/melonDS`, branch `switch-new`, GPL-3.0), from which no code is
 copied. Button icons and text use the console's shared system fonts, read at run time.
 
-GPL-3.0-or-later, like melonDS. melonDS © the melonDS team (Arisotura, RSDuck and contributors); icon based on the
-melonDS icon by limittox. Third-party libraries linked into the `.nro`: see `THIRD-PARTY-NOTICES.md`.
+GPL-3.0-or-later, like melonDS. melonDS © the melonDS team (Arisotura, RSDuck and contributors).
+The Honeydew icon and banners are original art drawn from code (`res/honeydew/make_art.py`, GPL-3.0-or-later);
+they do not use the melonDS logo. Third-party libraries linked into the `.nro`: see `THIRD-PARTY-NOTICES.md`.
 The menu text uses the console's shared system font, read at run time (not distributed).

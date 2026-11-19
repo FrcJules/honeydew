@@ -581,7 +581,7 @@ static void DrawHelp(Gfx* g)
         y += 50;
     }
     DrawWrapped(g, "Pas de BIOS ni de firmware nécessaires. Les jeux (fichiers .nds de vos propres cartouches) peuvent être n'importe où sur la carte SD. "
-                   "Réglages, sauvegardes et états : sdmc:/switch/melonDS-Switch/.", 60, y + 10, 1160, TextDim, Small);
+                   "Réglages, sauvegardes et états : sdmc:/switch/Honeydew/.", 60, y + 10, 1160, TextDim, Small);
 }
 
 bool WriteThumb(const std::string& path, const std::vector<unsigned char>& rgba, int w, int h)
@@ -952,9 +952,9 @@ static std::string Welcome(Gfx* g, bool& browse, bool hideFound)
             items.push_back({f.first, std::to_string(f.second) + (f.second > 1 ? " jeux" : " jeu"), [&, p = f.first](int, bool act) { if (act) chosen = p; }});
         items.push_back({"Chercher le dossier dans la carte SD", "", [&](int, bool act) { if (act) browse = true; }});
         items.push_back({"Plus tard", "", [&](int, bool act) { if (act) later = true; }});
-        DrawFrame(g, "Bienvenue dans melonDS Switch", {UI_A " Choisir", UI_B " Plus tard"});
+        DrawFrame(g, "Bienvenue dans Honeydew", {UI_A " Choisir", UI_B " Plus tard"});
         int y = 110 + DrawWrapped(g, "Pour jouer, copiez vos propres jeux (fichiers .nds) sur la carte SD, par exemple dans le dossier sdmc:/roms/nds. "
-                                     "melonDS ne contient aucun jeu et n'en fournit pas.", 60, 110, 1160, Text, Normal);
+                                     "Honeydew ne contient aucun jeu et n'en fournit pas.", 60, 110, 1160, Text, Normal);
         y += 14;
         if (!found.empty()) y += DrawWrapped(g, "Des jeux ont été trouvés. Choisissez le dossier de votre bibliothèque :", 60, y, 1160, TextDim, Normal) + 10;
         else y += DrawWrapped(g, "Aucun jeu trouvé dans les dossiers habituels : cherchez le dossier qui contient vos jeux.", 60, y, 1160, TextDim, Normal) + 10;
@@ -1051,8 +1051,8 @@ HomeChoice RunHome(Gfx* g, const std::string& configDir, const std::string& star
 
         GfxClear(g);
         Fill(g, 0, 0, 1280, 720, 35, 38, 44);
-        DrawText(g, "melonDS", 44, 26, Text, Big);
-        DrawText(g, version, 44 + TextWidth("melonDS", Big) + 10, 40, TextDim, Small);
+        DrawText(g, "Honeydew", 44, 26, Text, Big);
+        DrawText(g, version, 44 + TextWidth("Honeydew", Big) + 10, 40, TextDim, Small);
         int tx = 1250;
         int tabX[TabCount], tabW[TabCount];
         for (int i = TabCount - 1; i >= 0; i--)
