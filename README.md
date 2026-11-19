@@ -1,5 +1,8 @@
-> **melonDS Switch (unofficial fork)**: this repository is a Nintendo Switch port of melonDS, not the official project.
-> Switch build, controls and notes: [`src/frontend/switch-sdl/README.md`](src/frontend/switch-sdl/README.md).
+<p align="center"><img src="res/honeydew/banner.png" alt="Honeydew: Nintendo DS emulator for Switch, based on melonDS (GPL-3.0)" width="640"></p>
+
+> **Honeydew**: Nintendo DS emulator for Switch, based on melonDS (GPL-3.0). Unofficial: not made or supported by the
+> melonDS team. Formerly "melonDS Switch" (up to 0.4.1).
+> Install, controls, build and notes: [`src/frontend/switch-sdl/README.md`](src/frontend/switch-sdl/README.md).
 > The text below is the original melonDS README.
 
 <p align="center"><img src="https://raw.githubusercontent.com/melonDS-emu/melonDS/master/res/icon/melon_128x128.png"></p>

@@ -8,7 +8,7 @@ static void check(bool ok, const char* what) { if (!ok) { printf("FAIL %s\n", wh
 int main()
 {
     {
-        char* v[] = {(char*)"/switch/melonDS-Switch/melonDS-Switch.nro"};
+        char* v[] = {(char*)"/switch/Honeydew/honeydew.nro"};
         LaunchArgs a = ParseLaunchArgs(1, v);
         check(a.Rom.empty() && !a.Browse, "no argument");
     }
