@@ -5,7 +5,7 @@ find_package(SDL2 REQUIRED)
 
 set(SWITCH_APP_NAME "Honeydew" CACHE STRING "Title shown in hbmenu")
 set(SWITCH_APP_AUTHOR "FrcJules" CACHE STRING "Author shown in hbmenu")
-set(SWITCH_APP_VERSION "0.5.0" CACHE STRING "Version shown in hbmenu and in the menu")
+set(SWITCH_APP_VERSION "0.5.1" CACHE STRING "Version shown in hbmenu and in the menu")
 
 add_executable(honeydew
     main.cpp

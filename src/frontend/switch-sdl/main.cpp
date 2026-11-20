@@ -363,7 +363,8 @@ int main(int argc, char** argv)
 
     mkdir(ConfigDir, 0777);
     // settings, saves and states of the earlier versions (OldConfigDirs): moved here, existing files kept;
-    // the old .nro stays where it is (hbmenu lists it until the user deletes it)
+    // the old .nro and its hbmenu favourite mark (.<name>.nro.star) stay where they are (hbmenu lists the old
+    // .nro until the user deletes it)
     int movedFiles = 0;
     std::string movedFrom;
     for (const char* oldDir : OldConfigDirs)
@@ -376,6 +377,7 @@ int main(int argc, char** argv)
             size_t n = strlen(e->d_name);
             if (!strcmp(e->d_name, ".") || !strcmp(e->d_name, "..")) continue;
             if (n > 4 && !strcasecmp(e->d_name + n - 4, ".nro")) continue;
+            if (n > 9 && !strcasecmp(e->d_name + n - 9, ".nro.star")) continue;
             std::string from = std::string(oldDir) + "/" + e->d_name, to = std::string(ConfigDir) + "/" + e->d_name;
             struct stat st;
             if (stat(to.c_str(), &st) != 0 && rename(from.c_str(), to.c_str()) == 0) moved++;
