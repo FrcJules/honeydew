@@ -30,6 +30,7 @@
 
 #include <switch.h>
 
+#include "Language.h"
 #include "Controls.h"
 #include "Layout.h"
 #include "RomInfo.h"
@@ -138,7 +139,7 @@ static void AddSetting(std::vector<Item>& items, KeyValues& kv, const KeyValues*
     int idx = 0;
     for (size_t i = 0; i < d->Choices.size(); i++)
         if (v == d->Choices[i].Value) idx = (int)i;
-    items.push_back({label ? label : d->Label, d->Choices[idx].Label, [&kv, d, idx, changed](int dir, bool) {
+    items.push_back({I18n::Tr(label ? label : d->Label), I18n::Tr(d->Choices[idx].Label), [&kv, d, idx, changed](int dir, bool) {
         int n = (int)d->Choices.size();
         kv[d->Key] = d->Choices[(idx + (dir < 0 ? n - 1 : 1)) % n].Value;
         changed();
@@ -149,7 +150,7 @@ static std::vector<Item> SettingItems(KeyValues& kv, const KeyValues* fallback, 
 {
     std::vector<Item> items;
     auto header = [&](const char* t) { Item it; it.Label = t; it.Header = true; items.push_back(it); };
-    header("Écrans");
+    header(I18n::Tr("Écrans"));
     AddSetting(items, kv, fallback, "layout", changed);
     bool hybrid = Value(kv, fallback, *FindDef("layout")) == "2";
     if (hybrid)
@@ -157,7 +158,7 @@ static std::vector<Item> SettingItems(KeyValues& kv, const KeyValues* fallback, 
         // hybrid: "swap" chooses the big screen
         const SettingDef* d = FindDef("swap");
         bool bottom = Value(kv, fallback, *d) == "1";
-        items.push_back({"Grand écran", bottom ? "bas" : "haut", [&kv, bottom, changed](int, bool) { kv["swap"] = bottom ? "0" : "1"; changed(); }});
+        items.push_back({I18n::Tr("Grand écran"), bottom ? I18n::Tr("bas") : I18n::Tr("haut"), [&kv, bottom, changed](int, bool) { kv["swap"] = bottom ? "0" : "1"; changed(); }});
     }
     else
     {
@@ -168,15 +169,15 @@ static std::vector<Item> SettingItems(KeyValues& kv, const KeyValues* fallback, 
     AddSetting(items, kv, fallback, "intscale", changed);
     AddSetting(items, kv, fallback, "gap", changed);
     AddSetting(items, kv, fallback, "autotop", changed);
-    header("Rendu");
+    header(I18n::Tr("Rendu"));
     AddSetting(items, kv, fallback, "gpu", changed);
     AddSetting(items, kv, fallback, "gpuscale", changed);
     AddSetting(items, kv, fallback, "threaded", changed);
-    header("Processeur");
+    header(I18n::Tr("Processeur"));
     AddSetting(items, kv, fallback, "cpu", changed);
     if (general)
     {
-        header("Affichage");
+        header(I18n::Tr("Affichage"));
         AddSetting(items, kv, fallback, "filter", changed);
         AddSetting(items, kv, fallback, "showfps", changed);
         AddSetting(items, kv, fallback, "layoutkeys", changed);
@@ -201,7 +202,7 @@ static void LoadInfo(Entry& e, const std::string& configDir)
     if (e.Loaded || e.Dir) return;
     e.Loaded = true;
     e.Info = std::make_shared<RomInfo>();
-    ReadRomInfo(e.Path, *e.Info, 2);
+    ReadRomInfo(e.Path, *e.Info, I18n::BannerLanguage());
     e.HasGameSettings = IsFile(configDir + "/" + StripExt(BaseName(e.Path)) + ".ui");
 }
 
@@ -238,7 +239,7 @@ static std::vector<Entry> ListDir(const std::string& dir)
     if (dir.size() > 6)
     {
         Entry up;
-        up.Name = "Dossier parent";
+        up.Name = I18n::Tr("Dossier parent");
         up.Dir = up.Up = true;
         size_t sl = dir.find_last_of('/');
         up.Path = sl <= 5 ? "sdmc:/" : dir.substr(0, sl);
@@ -315,7 +316,7 @@ static void DrawDetails(Gfx* g, Entry* e, const std::string& configDir)
     if (e->Dir)
     {
         DrawFolderIcon(g, x + 120, ListY + 40, e->Up);
-        DrawWrapped(g, e->Up ? "Revenir au dossier parent" : e->Name, x, ListY + 130, w, Text, Normal, 3);
+        DrawWrapped(g, e->Up ? I18n::Tr("Revenir au dossier parent") : e->Name, x, ListY + 130, w, Text, Normal, 3);
         return;
     }
     LoadInfo(*e, configDir);
@@ -329,7 +330,7 @@ static void DrawDetails(Gfx* g, Entry* e, const std::string& configDir)
     DrawText(g, r.FileName, x, y, TextDim, Small, w);
     y += 32;
     std::string s = r.GameCode.empty() ? "" : "Code " + r.GameCode + "   ";
-    s += e->HasGameSettings ? "Réglages propres à ce jeu" : (BuiltinSoftware(r.GameCode) ? "Rendu logiciel (par défaut pour ce jeu)" : "Réglages généraux");
+    s += e->HasGameSettings ? I18n::Tr("Réglages propres à ce jeu") : (BuiltinSoftware(r.GameCode) ? I18n::Tr("Rendu logiciel (par défaut pour ce jeu)") : I18n::Tr("Réglages généraux"));
     DrawText(g, s, x, y, e->HasGameSettings ? AccentText : TextDim, Small, w);
 }
 
@@ -377,7 +378,7 @@ static bool SaveProfile(const std::string& configDir, const ControlProfile& p)
 
 static std::string ProfileName(const std::vector<ControlProfile>& profiles, const std::string& id)
 {
-    for (const ControlProfile& p : profiles) if (p.Id == id) return p.Name;
+    for (const ControlProfile& p : profiles) if (p.Id == id) return ProfileDisplayName(p);
     return "Standard";
 }
 
@@ -390,42 +391,42 @@ static void ProfileEditor(Gfx* g, const std::string& configDir, ControlProfile& 
     bool done = false;
     while (!done && appletMainLoop())
     {
-        auto save = [&]() { note = SaveProfile(configDir, p) ? "Enregistré." : "Impossible d'écrire le profil."; };
+        auto save = [&]() { note = SaveProfile(configDir, p) ? I18n::Tr("Enregistré.") : I18n::Tr("Impossible d'écrire le profil."); };
         std::vector<Item> items;
         auto header = [&](const char* t) { Item it; it.Label = t; it.Header = true; items.push_back(it); };
-        header("Boutons de la DS");
+        header(I18n::Tr("Boutons de la DS"));
         static const int order[DsKeyCount] = {DsA, DsB, DsX, DsY, DsL, DsR, DsStart, DsSelect, DsUp, DsDown, DsLeft, DsRight};
         for (int k : order)
-            items.push_back({std::string("DS ") + DsKeyName(k), capture == k ? "appuyez sur un bouton..." : SwButtonName(p.Button[k]), [&, k](int dir, bool act) {
+            items.push_back({std::string("DS ") + DsKeyName(k), capture == k ? I18n::Tr("appuyez sur un bouton...") : SwButtonName(p.Button[k]), [&, k](int dir, bool act) {
                 if (act) { capture = k; return; }
                 p.Button[k] = (p.Button[k] + 1 + (dir < 0 ? SwButtonCount : 2)) % (SwButtonCount + 1) - 1;   // -1 (none) .. 15
                 save();
             }});
         header("Sticks");
-        items.push_back({"Stick gauche", p.LeftStickDpad ? "croix" : "rien", [&](int, bool) { p.LeftStickDpad = !p.LeftStickDpad; save(); }});
-        items.push_back({"Stick droit", RightStickName(p.RightStick), [&](int dir, bool) { p.RightStick = (p.RightStick + (dir < 0 ? RightModeCount - 1 : 1)) % RightModeCount; save(); }});
-        items.push_back({"Vitesse (curseur, visée)", std::to_string(p.Sensitivity), [&](int dir, bool) { p.Sensitivity = dir ? std::clamp(p.Sensitivity + dir, 1, 10) : p.Sensitivity % 10 + 1; save(); }});
-        items.push_back({"Visée : axe vertical inversé", p.InvertY ? "oui" : "non", [&](int, bool) { p.InvertY = !p.InvertY; save(); }});
+        items.push_back({I18n::Tr("Stick gauche"), p.LeftStickDpad ? I18n::Tr("croix") : I18n::Tr("rien"), [&](int, bool) { p.LeftStickDpad = !p.LeftStickDpad; save(); }});
+        items.push_back({I18n::Tr("Stick droit"), RightStickName(p.RightStick), [&](int dir, bool) { p.RightStick = (p.RightStick + (dir < 0 ? RightModeCount - 1 : 1)) % RightModeCount; save(); }});
+        items.push_back({I18n::Tr("Vitesse (curseur, visée)"), std::to_string(p.Sensitivity), [&](int dir, bool) { p.Sensitivity = dir ? std::clamp(p.Sensitivity + dir, 1, 10) : p.Sensitivity % 10 + 1; save(); }});
+        items.push_back({I18n::Tr("Visée : axe vertical inversé"), p.InvertY ? I18n::Tr("oui") : I18n::Tr("non"), [&](int, bool) { p.InvertY = !p.InvertY; save(); }});
         if (IsBuiltinProfile(p.Id))
-            items.push_back({"Rétablir ce profil d'origine", "", [&](int, bool act) {
+            items.push_back({I18n::Tr("Rétablir ce profil d'origine"), "", [&](int, bool act) {
                 if (!act) return;
                 remove((configDir + "/controls/" + p.Id + ".txt").c_str());
                 for (const ControlProfile& b : BuiltinProfiles()) if (b.Id == p.Id) p = b;
-                note = "Profil d'origine rétabli.";
+                note = I18n::Tr("Profil d'origine rétabli.");
             }});
         else
-            items.push_back({"Supprimer ce profil", "", [&](int, bool act) {
+            items.push_back({I18n::Tr("Supprimer ce profil"), "", [&](int, bool act) {
                 if (!act) return;
                 remove((configDir + "/controls/" + p.Id + ".txt").c_str());
                 deleted = true;
                 done = true;
             }});
-        items.push_back({"Retour", "", [&](int, bool act) { if (act) done = true; }});
+        items.push_back({I18n::Tr("Retour"), "", [&](int, bool act) { if (act) done = true; }});
 
-        DrawFrame(g, "Commandes : " + p.Name, capture >= 0 ? std::vector<std::string>{"Appuyez sur le bouton à utiliser pour DS " + std::string(DsKeyName(capture))}
-                                                       : std::vector<std::string>{UI_A " Choisir le bouton", UI_DPAD_LR " Changer", UI_B " Retour"});
+        DrawFrame(g, I18n::Tr("Commandes : ") + ProfileDisplayName(p), capture >= 0 ? std::vector<std::string>{I18n::Tr("Appuyez sur le bouton à utiliser pour DS ") + std::string(DsKeyName(capture))}
+                                                       : std::vector<std::string>{I18n::Tr(UI_A " Choisir le bouton"), I18n::Tr(UI_DPAD_LR " Changer"), I18n::Tr(UI_B " Retour")});
         DrawList(g, items, st, ListX, ListY, 1200, 9, 58);
-        DrawText(g, note.empty() ? UI_ZL " + " UI_ZR " ensemble restent les raccourcis de l'émulateur" : note, 60, 666, note.empty() ? TextDim : AccentText, Small, 560);
+        DrawText(g, note.empty() ? I18n::Tr(UI_ZL " + " UI_ZR " ensemble restent les raccourcis de l'émulateur") : note, 60, 666, note.empty() ? TextDim : AccentText, Small, 560);
         GfxPresent(g);
         Trim();
         Input in;
@@ -456,7 +457,7 @@ static void ProfilesPage(Gfx* g, const std::string& configDir)
         std::vector<ControlProfile> profiles = LoadProfiles(configDir);
         std::vector<Item> items;
         for (ControlProfile& p : profiles)
-            items.push_back({p.Name, RightStickName(p.RightStick), [&, id = p.Id](int, bool act) {
+            items.push_back({ProfileDisplayName(p), RightStickName(p.RightStick), [&, id = p.Id](int, bool act) {
                 if (!act) return;
                 for (ControlProfile& q : profiles)
                     if (q.Id == id)
@@ -465,7 +466,7 @@ static void ProfilesPage(Gfx* g, const std::string& configDir)
                         ProfileEditor(g, configDir, q, deleted);
                     }
             }});
-        items.push_back({"Nouveau profil", "copie du profil Standard", [&](int, bool act) {
+        items.push_back({I18n::Tr("Nouveau profil"), I18n::Tr("copie du profil Standard"), [&](int, bool act) {
             if (!act) return;
             int n = 1;
             for (;;)
@@ -477,15 +478,15 @@ static void ProfilesPage(Gfx* g, const std::string& configDir)
             }
             ControlProfile p = BuiltinProfiles()[0];
             p.Id = "custom" + std::to_string(n);
-            p.Name = "Perso " + std::to_string(n);
+            p.Name = I18n::Tr("Perso ") + std::to_string(n);
             SaveProfile(configDir, p);
             bool deleted = false;
             ProfileEditor(g, configDir, p, deleted);
         }});
-        items.push_back({"Retour", "", [&](int, bool act) { if (act) done = true; }});
-        DrawFrame(g, "Profils de commandes", {UI_A " Modifier", UI_B " Retour"});
+        items.push_back({I18n::Tr("Retour"), "", [&](int, bool act) { if (act) done = true; }});
+        DrawFrame(g, I18n::Tr("Profils de commandes"), {I18n::Tr(UI_A " Modifier"), I18n::Tr(UI_B " Retour")});
         DrawList(g, items, st, ListX, ListY, 1200, 9, 58);
-        DrawText(g, "Metroid Prime Hunters et Star Fox Command prennent automatiquement leur profil.", 60, 666, TextDim, Small, 700);
+        DrawText(g, I18n::Tr("Metroid Prime Hunters et Star Fox Command prennent automatiquement leur profil."), 60, 666, TextDim, Small, 700);
         GfxPresent(g);
         Trim();
         Input in;
@@ -514,18 +515,18 @@ static void GameSettings(Gfx* g, Entry& e, const std::string& configDir, const K
                 out[k] = Value(kv, &fallback, *FindDef(k));
             if (kv.count("controls")) out["controls"] = kv["controls"];
             kv = out;
-            note = WriteKeyValues(file, out) ? "" : "Impossible d'écrire " + file;
+            note = WriteKeyValues(file, out) ? "" : I18n::Tr("Impossible d'écrire ") + file;
             e.HasGameSettings = true;
         };
         std::vector<Item> items = SettingItems(kv, &fallback, false, save);
         {
             // controls: automatic (built-in profile for known games, else the default one) or one profile
             std::vector<ControlProfile> profiles = LoadProfiles(configDir);
-            Item h; h.Label = "Commandes"; h.Header = true; items.push_back(h);
+            Item h; h.Label = I18n::Tr("Commandes"); h.Header = true; items.push_back(h);
             std::string cur = kv.count("controls") ? kv["controls"] : "";
             std::string autoId = AutoProfileFor(e.Info->Title);
-            std::string shown = cur.empty() ? "automatique (" + ProfileName(profiles, autoId.empty() ? (general.count("controls") ? general.at("controls") : "standard") : autoId) + ")" : ProfileName(profiles, cur);
-            items.push_back({"Profil de commandes", shown, [&, profiles, cur](int dir, bool) {
+            std::string shown = cur.empty() ? I18n::Tr("automatique (") + ProfileName(profiles, autoId.empty() ? (general.count("controls") ? general.at("controls") : "standard") : autoId) + ")" : ProfileName(profiles, cur);
+            items.push_back({I18n::Tr("Profil de commandes"), shown, [&, profiles, cur](int dir, bool) {
                 // cycle: automatic, then every profile
                 int n = (int)profiles.size(), idx = -1;
                 for (int i = 0; i < n; i++) if (profiles[i].Id == cur) idx = i;
@@ -535,20 +536,20 @@ static void GameSettings(Gfx* g, Entry& e, const std::string& configDir, const K
             }});
         }
         Item reset;
-        reset.Label = "Revenir aux réglages généraux";
+        reset.Label = I18n::Tr("Revenir aux réglages généraux");
         reset.Do = [&](int, bool act) {
             if (!act) return;
             remove(file.c_str());
             kv.clear();
             e.HasGameSettings = false;
-            note = "Ce jeu utilise maintenant les réglages généraux.";
+            note = I18n::Tr("Ce jeu utilise maintenant les réglages généraux.");
         };
         items.push_back(reset);
 
-        DrawFrame(g, "Réglages : " + e.Info->Title, {UI_A " / " UI_DPAD_LR " Changer", UI_B " Retour"});
+        DrawFrame(g, I18n::Tr("Réglages : ") + e.Info->Title, {I18n::Tr(UI_A " / " UI_DPAD_LR " Changer"), I18n::Tr(UI_B " Retour")});
         DrawList(g, items, st, ListX, ListY, 1200, 9, 58);
         if (!note.empty()) DrawText(g, note, 60, 666, Warn, Small, 700);
-        else DrawText(g, e.HasGameSettings ? "Réglages propres à ce jeu" : "Ce jeu suit les réglages généraux", 60, 666, TextDim, Small, 700);
+        else DrawText(g, e.HasGameSettings ? I18n::Tr("Réglages propres à ce jeu") : I18n::Tr("Ce jeu suit les réglages généraux"), 60, 666, TextDim, Small, 700);
         GfxPresent(g);
         Trim();
         Input in;
@@ -576,12 +577,12 @@ static void DrawHelp(Gfx* g)
     int y = ListY + 6;
     for (const Line& l : lines)
     {
-        DrawText(g, l.Keys, 60, y, AccentText, Small, 480);
-        DrawText(g, l.What, 560, y, Text, Small, 680);
+        DrawText(g, I18n::Tr(l.Keys), 60, y, AccentText, Small, 480);
+        DrawText(g, I18n::Tr(l.What), 560, y, Text, Small, 680);
         y += 50;
     }
-    DrawWrapped(g, "Pas de BIOS ni de firmware nécessaires. Les jeux (fichiers .nds de vos propres cartouches) peuvent être n'importe où sur la carte SD. "
-                   "Réglages, sauvegardes et états : sdmc:/switch/Honeydew/.", 60, y + 10, 1160, TextDim, Small);
+    DrawWrapped(g, I18n::Tr("Pas de BIOS ni de firmware nécessaires. Les jeux (fichiers .nds de vos propres cartouches) peuvent être n'importe où sur la carte SD. "
+                   "Réglages, sauvegardes et états : sdmc:/switch/Honeydew/."), 60, y + 10, 1160, TextDim, Small);
 }
 
 bool WriteThumb(const std::string& path, const std::vector<unsigned char>& rgba, int w, int h)
@@ -697,7 +698,8 @@ static std::string NoTabs(std::string s)
 // library entries, favourites first, then by title. Titles come from the cache when the file did not change.
 static std::vector<Entry> BuildLibrary(const std::vector<std::string>& dirs, const std::string& configDir, const std::vector<std::string>& favs)
 {
-    const std::string cacheFile = configDir + "/library.txt";
+    // Preserve the existing French cache and keep English titles in a separate cache.
+    const std::string cacheFile = configDir + (I18n::GetLanguage() == I18n::Language::English ? "/library-en.txt" : "/library.txt");
     auto cache = ReadLibCache(cacheFile);
     std::vector<std::string> paths;
     for (const std::string& d : dirs) ScanDir(d, 4, paths);
@@ -719,7 +721,7 @@ static std::vector<Entry> BuildLibrary(const std::vector<std::string>& dirs, con
         else
         {
             RomInfo r;
-            ReadRomInfo(p, r, 2);
+            ReadRomInfo(p, r, I18n::BannerLanguage());
             ce.Size = st.st_size; ce.MTime = st.st_mtime; ce.Code = r.GameCode; ce.Title = NoTabs(r.Title); ce.Subtitle = NoTabs(r.Subtitle);
         }
         newCache[p] = ce;
@@ -839,15 +841,15 @@ static int GamePage(Gfx* g, Entry& e, const std::string& configDir, const KeyVal
         };
         bool hasAuto = IsFile(StateFile(configDir, e.Path, 0));
         if (hasAuto)
-            add("Continuer", FileDate(StateFile(configDir, e.Path, 0)), 0, [&](int, bool act) { if (act) result = 0; });
-        add(hasAuto ? "Recommencer (sans charger d'état)" : "Jouer", "", -1, [&](int, bool act) { if (act) result = -1; });
+            add(I18n::Tr("Continuer"), FileDate(StateFile(configDir, e.Path, 0)), 0, [&](int, bool act) { if (act) result = 0; });
+        add(hasAuto ? I18n::Tr("Recommencer (sans charger d'état)") : I18n::Tr("Jouer"), "", -1, [&](int, bool act) { if (act) result = -1; });
         for (int s = 1; s <= 4; s++)
         {
             std::string f = StateFile(configDir, e.Path, s);
-            if (IsFile(f)) add("Charger l'état " + std::to_string(s), FileDate(f), s, [&, s](int, bool act) { if (act) result = s; });
+            if (IsFile(f)) add(I18n::Tr("Charger l'état ") + std::to_string(s), FileDate(f), s, [&, s](int, bool act) { if (act) result = s; });
         }
-        add("Réglages de ce jeu", e.HasGameSettings ? "propres" : "généraux", -1, [&](int, bool act) { if (act) GameSettings(g, e, configDir, general); });
-        add("Favori", e.Favorite ? "oui" : "non", -1, [&](int, bool) {
+        add(I18n::Tr("Réglages de ce jeu"), e.HasGameSettings ? I18n::Tr("propres") : I18n::Tr("généraux"), -1, [&](int, bool act) { if (act) GameSettings(g, e, configDir, general); });
+        add(I18n::Tr("Favori"), e.Favorite ? I18n::Tr("oui") : I18n::Tr("non"), -1, [&](int, bool) {
             e.Favorite = !e.Favorite;
             favs.erase(std::remove(favs.begin(), favs.end(), e.Path), favs.end());
             if (e.Favorite) favs.push_back(e.Path);
@@ -856,7 +858,7 @@ static int GamePage(Gfx* g, Entry& e, const std::string& configDir, const KeyVal
             changed = true;
         });
         if (fromRecent)
-            add("Retirer des jeux récents", "", -1, [&](int, bool act) {
+            add(I18n::Tr("Retirer des jeux récents"), "", -1, [&](int, bool act) {
                 if (!act) return;
                 std::string rf = configDir + "/recent.txt";
                 std::vector<std::string> paths = ReadRecent(rf);
@@ -865,7 +867,7 @@ static int GamePage(Gfx* g, Entry& e, const std::string& configDir, const KeyVal
                 changed = true;
                 result = -3;
             });
-        add("Retour", "", -1, [&](int, bool act) { if (act) result = -3; });
+        add(I18n::Tr("Retour"), "", -1, [&](int, bool act) { if (act) result = -3; });
 
         GfxClear(g);
         Fill(g, 0, 0, 1280, 720, 35, 38, 44);
@@ -889,21 +891,21 @@ static int GamePage(Gfx* g, Entry& e, const std::string& configDir, const KeyVal
         if (shown >= 0 && ReadThumb(thumb, px, tw, th))
         {
             DrawImage(g, thumb + FileDate(thumb), px.data(), tw, th, 924, 50, 256, 384, true);
-            DrawText(g, (shown ? "État " + std::to_string(shown) : std::string("État automatique")) + "  " + FileDate(thumb), 1052, 446, TextDim, Small, 380, 1);
+            DrawText(g, (shown ? I18n::Tr("État ") + std::to_string(shown) : std::string(I18n::Tr("État automatique"))) + "  " + FileDate(thumb), 1052, 446, TextDim, Small, 380, 1);
         }
         else
         {
             Fill(g, 924, 50, 256, 384, 46, 50, 58);
-            DrawWrapped(g, shown >= 0 ? "Pas d'image pour cet état (sauvé par une ancienne version)" : "Aucun état sauvegardé", 944, 220, 216, TextDim, Small, 3);
+            DrawWrapped(g, shown >= 0 ? I18n::Tr("Pas d'image pour cet état (sauvé par une ancienne version)") : I18n::Tr("Aucun état sauvegardé"), 944, 220, 216, TextDim, Small, 3);
         }
-        DrawHints(g, {UI_A " Valider", UI_X " Favori", UI_Y " Réglages", UI_B " Retour"});
+        DrawHints(g, {I18n::Tr(UI_A " Valider"), I18n::Tr(UI_X " Favori"), I18n::Tr(UI_Y " Réglages"), I18n::Tr(UI_B " Retour")});
         GfxPresent(g);
         Trim();
 
         Input in;
         if (!Poll(in, 100)) continue;
         if (in.Button == BtnB) result = -3;
-        else if (in.Button == BtnX) { for (size_t i = 0; i < items.size(); i++) if (items[i].Label == "Favori") items[i].Do(0, true); }
+        else if (in.Button == BtnX) { for (size_t i = 0; i < items.size(); i++) if (items[i].Label == I18n::Tr("Favori")) items[i].Do(0, true); }
         else if (in.Button == BtnY) GameSettings(g, e, configDir, general);
         else ListInput(items, st, in, 30, 226, 760, 7, 56);
     }
@@ -949,15 +951,15 @@ static std::string Welcome(Gfx* g, bool& browse, bool hideFound)
     {
         std::vector<Item> items;
         for (auto& f : found)
-            items.push_back({f.first, std::to_string(f.second) + (f.second > 1 ? " jeux" : " jeu"), [&, p = f.first](int, bool act) { if (act) chosen = p; }});
-        items.push_back({"Chercher le dossier dans la carte SD", "", [&](int, bool act) { if (act) browse = true; }});
-        items.push_back({"Plus tard", "", [&](int, bool act) { if (act) later = true; }});
-        DrawFrame(g, "Bienvenue dans Honeydew", {UI_A " Choisir", UI_B " Plus tard"});
-        int y = 110 + DrawWrapped(g, "Pour jouer, copiez vos propres jeux (fichiers .nds) sur la carte SD, par exemple dans le dossier sdmc:/roms/nds. "
-                                     "Honeydew ne contient aucun jeu et n'en fournit pas.", 60, 110, 1160, Text, Normal);
+            items.push_back({f.first, std::to_string(f.second) + (f.second > 1 ? I18n::Tr(" jeux") : I18n::Tr(" jeu")), [&, p = f.first](int, bool act) { if (act) chosen = p; }});
+        items.push_back({I18n::Tr("Chercher le dossier dans la carte SD"), "", [&](int, bool act) { if (act) browse = true; }});
+        items.push_back({I18n::Tr("Plus tard"), "", [&](int, bool act) { if (act) later = true; }});
+        DrawFrame(g, I18n::Tr("Bienvenue dans Honeydew"), {I18n::Tr(UI_A " Choisir"), I18n::Tr(UI_B " Plus tard")});
+        int y = 110 + DrawWrapped(g, I18n::Tr("Pour jouer, copiez vos propres jeux (fichiers .nds) sur la carte SD, par exemple dans le dossier sdmc:/roms/nds. "
+                                     "Honeydew ne contient aucun jeu et n'en fournit pas."), 60, 110, 1160, Text, Normal);
         y += 14;
-        if (!found.empty()) y += DrawWrapped(g, "Des jeux ont été trouvés. Choisissez le dossier de votre bibliothèque :", 60, y, 1160, TextDim, Normal) + 10;
-        else y += DrawWrapped(g, "Aucun jeu trouvé dans les dossiers habituels : cherchez le dossier qui contient vos jeux.", 60, y, 1160, TextDim, Normal) + 10;
+        if (!found.empty()) y += DrawWrapped(g, I18n::Tr("Des jeux ont été trouvés. Choisissez le dossier de votre bibliothèque :"), 60, y, 1160, TextDim, Normal) + 10;
+        else y += DrawWrapped(g, I18n::Tr("Aucun jeu trouvé dans les dossiers habituels : cherchez le dossier qui contient vos jeux."), 60, y, 1160, TextDim, Normal) + 10;
         DrawList(g, items, st, 60, y, 1160, std::min(6, (int)((640 - y) / 58)), 58);
         GfxPresent(g);
         Trim();
@@ -972,6 +974,8 @@ static std::string Welcome(Gfx* g, bool& browse, bool hideFound)
 HomeChoice RunHome(Gfx* g, const std::string& configDir, const std::string& startDir, const std::string& version)
 {
     const std::string recentFile = configDir + "/recent.txt", homeFile = configDir + "/home.txt", uiFile = configDir + "/ui.txt";
+    KeyValues general = ReadKeyValues(uiFile);
+    I18n::SetLanguage(I18n::ParseLanguage(general.count("language") ? general["language"] : "fr"));
     KeyValues home = ReadKeyValues(homeFile);
     std::string dir = home.count("dir") && !home["dir"].empty() ? home["dir"] : startDir;
     struct stat st0;
@@ -1000,7 +1004,7 @@ HomeChoice RunHome(Gfx* g, const std::string& configDir, const std::string& star
         // first scan of a big folder: say so (titles are read from every ROM once, then cached)
         GfxClear(g);
         Fill(g, 0, 0, 1280, 720, 35, 38, 44);
-        DrawText(g, "Lecture de la bibliothèque...", 640, 340, TextDim, Normal, 0, 1);
+        DrawText(g, I18n::Tr("Lecture de la bibliothèque..."), 640, 340, TextDim, Normal, 0, 1);
         GfxPresent(g);
         library = BuildLibrary(libDirs, configDir, favs);
     };
@@ -1025,7 +1029,6 @@ HomeChoice RunHome(Gfx* g, const std::string& configDir, const std::string& star
     const auto openedAt = std::chrono::steady_clock::now();
     // button of the file browser (Y without a controller): adds the folder shown to the library
     const int AddX = 830, AddY = 560, AddW = 400, AddH = 64;
-    KeyValues general = ReadKeyValues(uiFile);
     std::string note;
     static const char* tabs[] = {"Récents", "Bibliothèque", "Fichiers", "Réglages", "Aide"};
 
@@ -1040,14 +1043,14 @@ HomeChoice RunHome(Gfx* g, const std::string& configDir, const std::string& star
         std::vector<std::string> hints;
         if (gameTab && sel)
         {
-            hints.push_back(sel->Dir ? UI_A " Ouvrir" : UI_A " Choisir");
-            if (!sel->Dir) hints.push_back(UI_X " Favori");
+            hints.push_back(sel->Dir ? I18n::Tr(UI_A " Ouvrir") : I18n::Tr(UI_A " Choisir"));
+            if (!sel->Dir) hints.push_back(I18n::Tr(UI_X " Favori"));
         }
-        if (tab == TabFiles) hints.push_back(UI_Y " Ajouter le dossier");
-        if (tab == TabFiles && dir.size() > 6) hints.push_back(UI_B " Parent");
-        if (tab == TabSettings) hints.push_back(UI_A " / " UI_DPAD_LR " Changer");
-        hints.push_back(UI_L " " UI_R " Onglet");
-        hints.push_back(UI_PLUS " Quitter");
+        if (tab == TabFiles) hints.push_back(I18n::Tr(UI_Y " Ajouter le dossier"));
+        if (tab == TabFiles && dir.size() > 6) hints.push_back(I18n::Tr(UI_B " Parent"));
+        if (tab == TabSettings) hints.push_back(I18n::Tr(UI_A " / " UI_DPAD_LR " Changer"));
+        hints.push_back(I18n::Tr(UI_L " " UI_R " Onglet"));
+        hints.push_back(I18n::Tr(UI_PLUS " Quitter"));
 
         GfxClear(g);
         Fill(g, 0, 0, 1280, 720, 35, 38, 44);
@@ -1057,14 +1060,14 @@ HomeChoice RunHome(Gfx* g, const std::string& configDir, const std::string& star
         int tabX[TabCount], tabW[TabCount];
         for (int i = TabCount - 1; i >= 0; i--)
         {
-            tabW[i] = TextWidth(tabs[i], Normal) + 30;
+            tabW[i] = TextWidth(I18n::Tr(tabs[i]), Normal) + 30;
             tx -= tabW[i];
             tabX[i] = tx;
         }
         bool animating = false;
         for (int i = 0; i < TabCount; i++)
         {
-            DrawText(g, tabs[i], tabX[i] + 15, 30, i == tab ? AccentText : TextDim, Normal);
+            DrawText(g, I18n::Tr(tabs[i]), tabX[i] + 15, 30, i == tab ? AccentText : TextDim, Normal);
             if (i == tab)
             {
                 float tx0 = (float)tabX[i] + 8, tw0 = (float)tabW[i] - 16;
@@ -1083,45 +1086,63 @@ HomeChoice RunHome(Gfx* g, const std::string& configDir, const std::string& star
         if (gameTab)
         {
             if (list.empty())
-                DrawWrapped(g, tab == TabRecent ? "Aucun jeu lancé récemment." :
-                               tab == TabLibrary ? (libDirs.empty() ? "La bibliothèque est vide : dans l'onglet « Fichiers », ouvrez le dossier de vos jeux et appuyez sur " UI_Y " (ou touchez « Ajouter ce dossier »)." : "Aucun jeu (.nds) dans les dossiers de la bibliothèque.")
-                               : "Aucun jeu (.nds) dans ce dossier.", 80, 140, 1100, TextDim, Normal);
+                DrawWrapped(g, tab == TabRecent ? I18n::Tr("Aucun jeu lancé récemment.") :
+                               tab == TabLibrary ? (libDirs.empty() ? I18n::Tr("La bibliothèque est vide : dans l'onglet « Fichiers », ouvrez le dossier de vos jeux et appuyez sur " UI_Y " (ou touchez « Ajouter ce dossier »).") : I18n::Tr("Aucun jeu (.nds) dans les dossiers de la bibliothèque."))
+                               : I18n::Tr("Aucun jeu (.nds) dans ce dossier."), 80, 140, 1100, TextDim, Normal);
             if (grid) DrawGrid(g, list, st, configDir);
             else
             {
                 DrawGameList(g, list, st, configDir);
                 DrawDetails(g, sel, configDir);
             }
-            footer = tab == TabFiles ? dir : tab == TabLibrary ? std::to_string(library.size()) + " jeu(x)" : std::to_string(recent.size()) + " jeu(x) récent(s)";
+            footer = tab == TabFiles ? dir : tab == TabLibrary ? std::to_string(library.size()) + I18n::Tr(" jeu(x)") : std::to_string(recent.size()) + I18n::Tr(" jeu(x) récent(s)");
         }
         else if (tab == TabSettings)
         {
-            auto save = [&]() { note = WriteKeyValues(uiFile, general) ? "Enregistré : réglages de tous les jeux sans réglages propres." : "Impossible d'écrire " + uiFile; };
-            Item h; h.Label = "Bibliothèque"; h.Header = true; settingItems.push_back(h);
-            settingItems.push_back({"Présentation", gridView ? "grille" : "liste", [&](int, bool) { gridView = !gridView; saveHome(); }});
+            auto save = [&]() { note = WriteKeyValues(uiFile, general) ? I18n::Tr("Enregistré : réglages de tous les jeux sans réglages propres.") : I18n::Tr("Impossible d'écrire ") + uiFile; };
+            settingItems.push_back({I18n::Tr("Langue"), I18n::GetLanguage() == I18n::Language::English ? "English" : "Français", [&](int, bool) {
+                KeyValues updated = general;
+                const auto next = I18n::GetLanguage() == I18n::Language::French ? I18n::Language::English : I18n::Language::French;
+                updated["language"] = next == I18n::Language::English ? "en" : "fr";
+                if (!WriteKeyValues(uiFile, updated))
+                {
+                    note = I18n::Tr("Impossible d'écrire ") + uiFile;
+                    return;
+                }
+                general = std::move(updated);
+                I18n::SetLanguage(next);
+                note.clear();
+                // Drop loaded banner metadata as well as the library cache used by this screen.
+                files = ListDir(dir);
+                loadRecent();
+                loadLibrary();
+                ulX = -1;
+            }});
+            Item h; h.Label = I18n::Tr("Bibliothèque"); h.Header = true; settingItems.push_back(h);
+            settingItems.push_back({I18n::Tr("Présentation"), gridView ? I18n::Tr("grille") : I18n::Tr("liste"), [&](int, bool) { gridView = !gridView; saveHome(); }});
             for (size_t i = 0; i < libDirs.size(); i++)
-                settingItems.push_back({libDirs[i], "retirer", [&, i](int, bool act) {
+                settingItems.push_back({libDirs[i], I18n::Tr("retirer"), [&, i](int, bool act) {
                     if (!act) return;
                     libDirs.erase(libDirs.begin() + i);
                     saveHome();
                     loadLibrary();
-                    note = "Dossier retiré de la bibliothèque.";
+                    note = I18n::Tr("Dossier retiré de la bibliothèque.");
                 }});
             for (Item& it : SettingItems(general, nullptr, true, save)) settingItems.push_back(it);
             {
-                Item ch; ch.Label = "Commandes"; ch.Header = true; settingItems.push_back(ch);
+                Item ch; ch.Label = I18n::Tr("Commandes"); ch.Header = true; settingItems.push_back(ch);
                 std::vector<ControlProfile> profiles = LoadProfiles(configDir);
                 std::string cur = general.count("controls") ? general["controls"] : "standard";
-                settingItems.push_back({"Profil par défaut", ProfileName(profiles, cur), [&, profiles, cur](int dir, bool) {
+                settingItems.push_back({I18n::Tr("Profil par défaut"), ProfileName(profiles, cur), [&, profiles, cur](int dir, bool) {
                     int n = (int)profiles.size(), idx = 0;
                     for (int i = 0; i < n; i++) if (profiles[i].Id == cur) idx = i;
                     general["controls"] = profiles[(idx + (dir < 0 ? n - 1 : 1)) % n].Id;
                     save();
                 }});
-                settingItems.push_back({"Modifier les profils de commandes", "", [&](int, bool act) { if (act) ProfilesPage(g, configDir); }});
+                settingItems.push_back({I18n::Tr("Modifier les profils de commandes"), "", [&](int, bool act) { if (act) ProfilesPage(g, configDir); }});
             }
             DrawList(g, settingItems, settingsSt, ListX, ListY, 1200, 9, 58);
-            footer = note.empty() ? "Un jeu peut avoir ses propres réglages : sa page, puis « Réglages de ce jeu »" : note;
+            footer = note.empty() ? I18n::Tr("Un jeu peut avoir ses propres réglages : sa page, puis « Réglages de ce jeu »") : note;
         }
         else
             DrawHelp(g);
@@ -1131,7 +1152,7 @@ HomeChoice RunHome(Gfx* g, const std::string& configDir, const std::string& star
         {
             bool in_ = std::find(libDirs.begin(), libDirs.end(), dir) != libDirs.end();
             Fill(g, AddX, AddY, AddW, AddH, in_ ? 45 : 0, in_ ? 52 : 120, in_ ? 60 : 150);
-            DrawText(g, in_ ? "Déjà dans la bibliothèque" : "Ajouter ce dossier", AddX + AddW / 2, AddY + 18, Text, Normal, AddW - 20, 1);
+            DrawText(g, in_ ? I18n::Tr("Déjà dans la bibliothèque") : I18n::Tr("Ajouter ce dossier"), AddX + AddW / 2, AddY + 18, Text, Normal, AddW - 20, 1);
         }
         long fadeMs = (long)std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - openedAt).count();
         if (fadeMs < 250) { Fill(g, 0, 0, 1280, 720, 35, 38, 44, (int)(255 - fadeMs * 255 / 250)); animating = true; }

@@ -1,5 +1,5 @@
 // Host test of the Switch screen layouts (no console needed):
-//   g++ -std=c++17 -O1 -o /tmp/layout_test tests/layout_test.cpp Layout.cpp ../ScreenLayout.cpp && /tmp/layout_test
+//   g++ -std=c++17 -O1 -o /tmp/layout_test tests/layout_test.cpp Layout.cpp Language.cpp ../ScreenLayout.cpp && /tmp/layout_test
 #include <stdio.h>
 #include <math.h>
 #include <string.h>

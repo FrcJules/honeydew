@@ -15,6 +15,7 @@ add_executable(honeydew
     RomInfo.cpp
     Png.cpp
     Ui.cpp
+    Language.cpp
     UiHome.cpp
     ../ScreenLayout.cpp
     Platform.cpp

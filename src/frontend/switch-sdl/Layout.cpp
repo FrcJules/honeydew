@@ -22,6 +22,7 @@
 #include <algorithm>
 #include <cmath>
 
+#include "Language.h"
 #include "Layout.h"
 
 void DisplayOptions::Read(const std::map<std::string, std::string>& kv)
@@ -55,18 +56,18 @@ std::string DisplayOptions::Write() const
 const char* LayoutName(int layout)
 {
     static const char* names[] = {"verticale", "horizontale", "hybride"};
-    return names[std::clamp(layout, 0, 2)];
+    return I18n::Tr(names[std::clamp(layout, 0, 2)]);
 }
 
 const char* SizingName(int sizing)
 {
     static const char* names[] = {"égale", "haut plus grand", "bas plus grand", "haut seul", "bas seul"};
-    return names[std::clamp(sizing, 0, 4)];
+    return I18n::Tr(names[std::clamp(sizing, 0, 4)]);
 }
 
 const char* RotationName(int rotation)
 {
-    return rotation == 1 ? "livre (90°)" : rotation == 3 ? "livre (270°)" : "normale";
+    return rotation == 1 ? I18n::Tr("livre (90°)") : rotation == 3 ? I18n::Tr("livre (270°)") : I18n::Tr("normale");
 }
 
 void SwitchLayout::Setup(const DisplayOptions& o, bool topOnly, int width, int height)

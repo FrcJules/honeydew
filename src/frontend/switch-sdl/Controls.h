@@ -52,6 +52,8 @@ struct ControlProfile
 
 std::vector<ControlProfile> BuiltinProfiles();     // standard, aim (Metroid Prime Hunters), stylus (Star Fox Command)
 bool IsBuiltinProfile(const std::string& id);
+// Localize default built-in names without changing names saved in user profiles.
+std::string ProfileDisplayName(const ControlProfile& profile);
 // profile chosen automatically for a game (from the title of its banner), "" if none
 std::string AutoProfileFor(const std::string& title);
 

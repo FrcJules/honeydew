@@ -25,6 +25,10 @@ directed and tested on real hardware by FrcJules. The emulation core is melonDS 
   Professor Layton videos) switch to software rendering automatically.
 - **Home screen**: recent games first, game browser with the titles and icons read from the ROMs, general settings,
   settings of one game (Y), help. Usable with the buttons or the touch screen.
+- **French and English interface**: select **Réglages > Langue** / **Settings > Language**, or **Langue / Language**
+  in the in-game menu. Changes apply immediately and are saved for the next launch, including games opened from Sphaira.
+  French remains the default. Library titles follow the selected language (with English fallback for empty titles).
+  This setting changes the interface and displayed titles; the emulated DS firmware language remains English.
 - **Screen layouts**: vertical, horizontal, **hybrid** (one big screen on the left, both screens small on the right),
   swapped screens, one screen bigger or alone, "book" rotation (90° / 270°), integer or fitted scale, gap. Per game.
 - **Automatic big screen**: while the bottom screen is black (0.5 s), the top screen is shown alone, as big as possible;
@@ -65,7 +69,7 @@ automatically, existing files are kept. You can then delete the old `melonDS-Swi
 | File | |
 |---|---|
 | `config.txt` | optional: `rom=` `romdir=` `overclock=<MHz>\|auto` `gpu=0\|1` `gpuscale=1..3` `autosave=0\|1` `autoload=0\|1` ... (see the top of `main.cpp`) |
-| `ui.txt` | general settings (home screen, menu) |
+| `ui.txt` | general settings (home screen, menu), including `language=fr\|en` |
 | `<rom>.ui` | settings of that game: layout, renderer, resolution, CPU |
 | `recent.txt`, `home.txt` | recent games, last folder of the game browser |
 | `<rom>.sav`, `<rom>.ss0..4` | game save, states |
