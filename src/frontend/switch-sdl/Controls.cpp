@@ -23,6 +23,7 @@
 #include <algorithm>
 #include <cmath>
 
+#include "Language.h"
 #include "Controls.h"
 
 static const char* DsKeyIds[DsKeyCount] = {"a", "b", "select", "start", "right", "left", "up", "down", "r", "l", "x", "y"};
@@ -103,6 +104,14 @@ bool IsBuiltinProfile(const std::string& id)
     return id == "standard" || id == "aim" || id == "stylus";
 }
 
+std::string ProfileDisplayName(const ControlProfile& profile)
+{
+    if ((profile.Id == "aim" && profile.Name == "Visée (Metroid)") ||
+        (profile.Id == "stylus" && profile.Name == "Stylet (Star Fox)"))
+        return I18n::Tr(profile.Name.c_str());
+    return profile.Name;
+}
+
 std::string AutoProfileFor(const std::string& title)
 {
     std::string t = title;
@@ -115,20 +124,20 @@ std::string AutoProfileFor(const std::string& title)
 const char* DsKeyName(int k)
 {
     static const char* n[DsKeyCount] = {"A", "B", "Select", "Start", "Droite", "Gauche", "Haut", "Bas", "R", "L", "X", "Y"};
-    return k >= 0 && k < DsKeyCount ? n[k] : "?";
+    return I18n::Tr(k >= 0 && k < DsKeyCount ? n[k] : "?");
 }
 
 const char* SwButtonName(int b)
 {
     static const char* n[SwButtonCount] = {"", "", "", "", " (clic)", " (clic)", "", "",
                                            "", "", "", "", "", "", "", ""};
-    return b >= 0 && b < SwButtonCount ? n[b] : "aucun";
+    return I18n::Tr(b >= 0 && b < SwButtonCount ? n[b] : "aucun");
 }
 
 const char* RightStickName(int m)
 {
     static const char* n[RightModeCount] = {"rien", "curseur (" "" " clic pour toucher)", "stylet direct", "visée (glisser)"};
-    return n[std::clamp(m, 0, RightModeCount - 1)];
+    return I18n::Tr(n[std::clamp(m, 0, RightModeCount - 1)]);
 }
 
 void StickTouch::Reset()

@@ -59,6 +59,7 @@
 #include <GLES3/gl3.h>
 #include <switch.h>
 
+#include "Language.h"
 #include "Args.h"
 #include "Gfx.h"
 #include "Controls.h"
@@ -410,6 +411,7 @@ int main(int argc, char** argv)
     if (cfg.count("helpercore")) Platform::SwitchHelperCore = atoi(cfg["helpercore"].c_str());
     // defaults (best measured setup); config.txt overrides, then ui.txt (menu), then the defaults below
     auto ui0 = ReadConfig("ui.txt");
+    I18n::SetLanguage(I18n::ParseLanguage(ui0.count("language") ? ui0["language"] : "fr"));
     const bool useJit = !cfg.count("jit") || cfg["jit"] != "0";
     logf("=== Honeydew %s start, jit=%d ===\n", SWITCH_APP_VERSION, useJit ? 1 : 0);
     if (movedFiles) logf("moved %d files from %s\n", movedFiles, movedFrom.c_str());
@@ -553,7 +555,7 @@ int main(int argc, char** argv)
     auto saveUi = [&]() {
         FILE* f = fopen((std::string(ConfigDir) + "/ui.txt").c_str(), "w");
         if (!f) return;
-        fprintf(f, "%sfilter=%d\nshowfps=%d\nlayoutkeys=%d\n", disp.Write().c_str(), filter, showFps ? 1 : 0, layoutKeys ? 1 : 0);
+        fprintf(f, "%sfilter=%d\nshowfps=%d\nlayoutkeys=%d\nlanguage=%s\n", disp.Write().c_str(), filter, showFps ? 1 : 0, layoutKeys ? 1 : 0, I18n::LanguageCode());
         for (const char* k : {"cpu", "threaded", "gpu", "gpuscale", "controls"})
             if (ui0.count(k)) fprintf(f, "%s=%s\n", k, ui0[k].c_str());
         fclose(f);
@@ -630,7 +632,7 @@ int main(int argc, char** argv)
     if (!ReadFile(romPath, romData, romLen) || romLen < 0x200)
     {
         logf("cannot read rom %s\n", romPath.c_str());
-        Ui::Message(renderer, "Impossible de lire ce jeu", "Le fichier n'a pas pu être lu (ou il est trop petit pour être un jeu DS) :\n" + romPath, "Retour");
+        Ui::Message(renderer, I18n::Tr("Impossible de lire ce jeu"), I18n::Tr("Le fichier n'a pas pu être lu (ou il est trop petit pour être un jeu DS) :\n") + romPath, I18n::Tr("Retour"));
         GfxTexDestroy(&tex);
         earlyExit();
         goHome();
@@ -744,7 +746,7 @@ int main(int argc, char** argv)
         logf("failed to parse the ROM\n");
         watchdogStop = true;
         watchdog.join();
-        Ui::Message(renderer, "Ce fichier n'est pas un jeu DS valide", "melonDS n'a pas reconnu ce fichier comme une ROM de Nintendo DS :\n" + romPath, "Retour");
+        Ui::Message(renderer, I18n::Tr("Ce fichier n'est pas un jeu DS valide"), I18n::Tr("melonDS n'a pas reconnu ce fichier comme une ROM de Nintendo DS :\n") + romPath, I18n::Tr("Retour"));
         if (audio) SDL_CloseAudioDevice(audio);
         GfxTexDestroy(&tex);
         nds.reset();
@@ -1045,7 +1047,7 @@ int main(int argc, char** argv)
         std::string name = StripExt(BaseName(romPath)) + "_" + stamp + ".png";
         bool ok = WritePng(dir + "/" + name, captureFull(), 256, 384);
         logf("screenshot %s: %s\n", name.c_str(), ok ? "ok" : "FAILED");
-        return ok ? "Capture enregistrée (screenshots/)" : "Échec de la capture d'écran.";
+        return ok ? I18n::Tr("Capture enregistrée (screenshots/)") : I18n::Tr("Échec de la capture d'écran.");
     };
 
     // in-game menu (ZL + ZR + PLUS): emulation is paused. Returns 0 = resume, 1 = change ROM, 2 = quit
@@ -1060,7 +1062,7 @@ int main(int argc, char** argv)
         enum { PageMain, PageDisplay, PagePerf, PageStates };
         Ui::ListState pageSt[4];
         std::string note;
-        auto onOff = [](bool v) { return std::string(v ? "oui" : "non"); };
+        auto onOff = [](bool v) { return std::string(v ? I18n::Tr("oui") : I18n::Tr("non")); };
         auto display = [&]() { computeLayout(); saveUi(); };
         int shownPage = page;
         while (result < 0 && appletMainLoop())
@@ -1069,23 +1071,35 @@ int main(int argc, char** argv)
             std::vector<Ui::Item> items;
             if (page == PageMain)
             {
-                items.push_back({"Reprendre", "", [&](int, bool act) { if (act) result = 0; }});
-                items.push_back({"États", "", [&](int, bool act) { if (act) page = PageStates; }});
-                items.push_back({"Capture d'écran", "", [&](int, bool act) { if (act) note = takeScreenshot(); }});
-                items.push_back({"Affichage", "", [&](int, bool act) { if (act) page = PageDisplay; }});
-                items.push_back({"Commandes", profiles[profileIdx].Name, [&](int dir, bool) {
+                items.push_back({I18n::Tr("Reprendre"), "", [&](int, bool act) { if (act) result = 0; }});
+                items.push_back({I18n::Tr("États"), "", [&](int, bool act) { if (act) page = PageStates; }});
+                items.push_back({I18n::Tr("Capture d'écran"), "", [&](int, bool act) { if (act) note = takeScreenshot(); }});
+                items.push_back({I18n::Tr("Affichage"), "", [&](int, bool act) { if (act) page = PageDisplay; }});
+                items.push_back({I18n::Tr("Commandes"), ProfileDisplayName(profiles[profileIdx]), [&](int dir, bool) {
                     int n = (int)profiles.size();
                     profileIdx = (profileIdx + (dir < 0 ? n - 1 : 1)) % n;
                     controlsId = profiles[profileIdx].Id;   // remembered for this game (held keys are reset when the menu closes)
                     saveUi();
                 }});
-                items.push_back({"Performances", "", [&](int, bool act) { if (act) page = PagePerf; }});
-                items.push_back({"Changer de jeu", "", [&](int, bool act) { if (act) result = 1; }});
-                items.push_back({"Quitter", "", [&](int, bool act) { if (act) result = 2; }});
+                items.push_back({I18n::Tr("Performances"), "", [&](int, bool act) { if (act) page = PagePerf; }});
+                items.push_back({I18n::Tr("Langue"), I18n::GetLanguage() == I18n::Language::English ? "English" : "Français", [&](int, bool) {
+                    auto updated = ReadKeyValues(std::string(ConfigDir) + "/ui.txt");
+                    const auto next = I18n::GetLanguage() == I18n::Language::French ? I18n::Language::English : I18n::Language::French;
+                    updated["language"] = next == I18n::Language::English ? "en" : "fr";
+                    if (!WriteKeyValues(std::string(ConfigDir) + "/ui.txt", updated))
+                    {
+                        note = I18n::Tr("Impossible d'écrire ") + std::string(ConfigDir) + "/ui.txt";
+                        return;
+                    }
+                    I18n::SetLanguage(next);
+                    note.clear();
+                }});
+                items.push_back({I18n::Tr("Changer de jeu"), "", [&](int, bool act) { if (act) result = 1; }});
+                items.push_back({I18n::Tr("Quitter"), "", [&](int, bool act) { if (act) result = 2; }});
             }
             else if (page == PagePerf)
             {
-                items.push_back({"Fréquence CPU", (autoClock ? "auto (" + std::to_string(overclockMHz) + " MHz)" : std::to_string(overclockMHz) + " MHz"), [&](int dir, bool) {
+                items.push_back({I18n::Tr("Fréquence CPU"), (autoClock ? "auto (" + std::to_string(overclockMHz) + " MHz)" : std::to_string(overclockMHz) + " MHz"), [&](int dir, bool) {
                     const int steps[] = {0, 1020, 1224, 1581, 1785};   // 0 = auto
                     int idx = 0;
                     if (!autoClock)
@@ -1099,24 +1113,24 @@ int main(int argc, char** argv)
                     if (clkOk) clkrstSetClockRate(&cpuSession, (u32)overclockMHz * 1000000u);
                     saveUi();
                 }});
-                items.push_back({"Rendu 3D", std::string(useGpu ? "GPU (GLES 3)" : "logiciel"), [&](int, bool) {
+                items.push_back({I18n::Tr("Rendu 3D"), std::string(useGpu ? "GPU (GLES 3)" : I18n::Tr("logiciel")), [&](int, bool) {
                     bool want = !useGpu;
                     if (applyRenderer(want)) useGpu = want;
                     else applyRenderer(useGpu);
                     gpuTex = 0;
                     saveUi();
                 }});
-                items.push_back({"Résolution GPU", std::to_string(gpuScale) + "x" + (useGpu ? "" : " (rendu GPU seulement)"), [&](int dir, bool) {
+                items.push_back({I18n::Tr("Résolution GPU"), std::to_string(gpuScale) + "x" + (useGpu ? "" : I18n::Tr(" (rendu GPU seulement)")), [&](int dir, bool) {
                     gpuScale = dir ? std::clamp(gpuScale + dir, 1, 3) : gpuScale % 3 + 1;
                     if (useGpu) applyRenderer(true);
                     saveUi();
                 }});
-                items.push_back({"3D sur un 2e cœur", std::string(threaded3d ? "oui (logiciel)" : "non"), [&](int, bool) {
+                items.push_back({I18n::Tr("3D sur un 2e cœur"), std::string(threaded3d ? I18n::Tr("oui (logiciel)") : I18n::Tr("non")), [&](int, bool) {
                     threaded3d = !threaded3d;
                     if (!useGpu) applyRenderer(false);
                     saveUi();
                 }});
-                items.push_back({"Retour", "", [&](int, bool act) { if (act) page = PageMain; }});
+                items.push_back({I18n::Tr("Retour"), "", [&](int, bool act) { if (act) page = PageMain; }});
             }
             else if (page == PageStates)
             {
@@ -1124,38 +1138,38 @@ int main(int argc, char** argv)
                 for (int s2 = 1; s2 <= 4; s2++)
                 {
                     std::string d = FileDate(statePath(s2));
-                    items.push_back({"Charger l'état " + std::to_string(s2), d.empty() ? "vide" : d, [&, s2](int, bool act) {
+                    items.push_back({I18n::Tr("Charger l'état ") + std::to_string(s2), d.empty() ? I18n::Tr("vide") : d, [&, s2](int, bool act) {
                         if (!act) return;
                         slot = s2;
                         bool ok = loadState(s2);
                         stateLoaded |= ok;
                         logf("load state slot %d: %s\n", s2, ok ? "ok" : "FAILED");
-                        note = ok ? "État chargé." : "Aucun état dans cet emplacement.";
+                        note = ok ? I18n::Tr("État chargé.") : I18n::Tr("Aucun état dans cet emplacement.");
                         if (ok) result = 0;
                     }});
                 }
                 for (int s2 = 1; s2 <= 4; s2++)
                 {
                     std::string d = FileDate(statePath(s2));
-                    items.push_back({"Sauver l'état " + std::to_string(s2), d.empty() ? "vide" : d, [&, s2](int, bool act) {
+                    items.push_back({I18n::Tr("Sauver l'état ") + std::to_string(s2), d.empty() ? I18n::Tr("vide") : d, [&, s2](int, bool act) {
                         if (!act) return;
                         slot = s2;
                         bool ok = saveState(s2, true);
                         logf("save state slot %d: %s\n", s2, ok ? "ok" : "FAILED");
-                        note = ok ? "État " + std::to_string(s2) + " sauvegardé." : "Échec de la sauvegarde.";
+                        note = ok ? I18n::Tr("État ") + std::to_string(s2) + I18n::Tr(" sauvegardé.") : I18n::Tr("Échec de la sauvegarde.");
                     }});
                 }
-                items.push_back({"Retour", "", [&](int, bool act) { if (act) page = PageMain; }});
+                items.push_back({I18n::Tr("Retour"), "", [&](int, bool act) { if (act) page = PageMain; }});
             }
             else   // PageDisplay
             {
-                items.push_back({"Disposition", LayoutName(disp.Layout), [&](int dir, bool) { disp.Layout = (disp.Layout + (dir < 0 ? 2 : 1)) % 3; display(); }});
+                items.push_back({I18n::Tr("Disposition"), LayoutName(disp.Layout), [&](int dir, bool) { disp.Layout = (disp.Layout + (dir < 0 ? 2 : 1)) % 3; display(); }});
                 if (disp.Layout == 2)
-                    items.push_back({"Grand écran", std::string(disp.Swap ? "bas" : "haut"), [&](int, bool) { disp.Swap = !disp.Swap; display(); }});
+                    items.push_back({I18n::Tr("Grand écran"), std::string(disp.Swap ? I18n::Tr("bas") : I18n::Tr("haut")), [&](int, bool) { disp.Swap = !disp.Swap; display(); }});
                 else
                 {
-                    items.push_back({"Taille des écrans", SizingName(disp.Sizing), [&](int dir, bool) { disp.Sizing = (disp.Sizing + (dir < 0 ? 4 : 1)) % 5; display(); }});
-                    items.push_back({"Inverser haut et bas", onOff(disp.Swap), [&](int, bool) { disp.Swap = !disp.Swap; display(); }});
+                    items.push_back({I18n::Tr("Taille des écrans"), SizingName(disp.Sizing), [&](int dir, bool) { disp.Sizing = (disp.Sizing + (dir < 0 ? 4 : 1)) % 5; display(); }});
+                    items.push_back({I18n::Tr("Inverser haut et bas"), onOff(disp.Swap), [&](int, bool) { disp.Swap = !disp.Swap; display(); }});
                 }
                 items.push_back({"Rotation", RotationName(disp.Rotation), [&](int dir, bool) {
                     const int rots[] = {0, 1, 3};
@@ -1163,13 +1177,13 @@ int main(int argc, char** argv)
                     disp.Rotation = rots[(idx + (dir < 0 ? 2 : 1)) % 3];
                     display();
                 }});
-                items.push_back({"Échelle", std::string(disp.IntegerScale ? "entière" : "ajustée à l'écran"), [&](int, bool) { disp.IntegerScale = !disp.IntegerScale; display(); }});
-                items.push_back({"Écart entre les écrans", std::to_string(disp.Gap), [&](int dir, bool) { disp.Gap = std::clamp(disp.Gap + (dir < 0 ? -8 : 8), 0, 64); if (!dir && disp.Gap == 64) disp.Gap = 0; display(); }});
-                items.push_back({"Grand écran si le bas est noir", onOff(disp.AutoTop), [&](int, bool) { disp.AutoTop = !disp.AutoTop; bottomBlack.Reset(); display(); }});
-                items.push_back({"Filtre", std::string(filter ? "lissé" : "pixels nets"), [&](int, bool) { filter ^= 1; makeTexture(); saveUi(); }});
-                items.push_back({"Afficher les fps", onOff(showFps), [&](int, bool) { showFps = !showFps; saveUi(); }});
-                items.push_back({"Raccourcis de disposition", std::string(layoutKeys ? "activés" : "désactivés"), [&](int, bool) { layoutKeys = !layoutKeys; saveUi(); }});
-                items.push_back({"Retour", "", [&](int, bool act) { if (act) page = PageMain; }});
+                items.push_back({I18n::Tr("Échelle"), std::string(disp.IntegerScale ? I18n::Tr("entière") : I18n::Tr("ajustée à l'écran")), [&](int, bool) { disp.IntegerScale = !disp.IntegerScale; display(); }});
+                items.push_back({I18n::Tr("Écart entre les écrans"), std::to_string(disp.Gap), [&](int dir, bool) { disp.Gap = std::clamp(disp.Gap + (dir < 0 ? -8 : 8), 0, 64); if (!dir && disp.Gap == 64) disp.Gap = 0; display(); }});
+                items.push_back({I18n::Tr("Grand écran si le bas est noir"), onOff(disp.AutoTop), [&](int, bool) { disp.AutoTop = !disp.AutoTop; bottomBlack.Reset(); display(); }});
+                items.push_back({I18n::Tr("Filtre"), std::string(filter ? I18n::Tr("lissé") : I18n::Tr("pixels nets")), [&](int, bool) { filter ^= 1; makeTexture(); saveUi(); }});
+                items.push_back({I18n::Tr("Afficher les fps"), onOff(showFps), [&](int, bool) { showFps = !showFps; saveUi(); }});
+                items.push_back({I18n::Tr("Raccourcis de disposition"), std::string(layoutKeys ? I18n::Tr("activés") : I18n::Tr("désactivés")), [&](int, bool) { layoutKeys = !layoutKeys; saveUi(); }});
+                items.push_back({I18n::Tr("Retour"), "", [&](int, bool act) { if (act) page = PageMain; }});
             }
             GfxClear(renderer);
             drawScreens();
@@ -1177,7 +1191,7 @@ int main(int argc, char** argv)
             Ui::Fill(renderer, 0, 0, 1280, 720, 10, 14, 22, page == PageDisplay ? 60 : 140);
             Ui::Fill(renderer, 0, 0, 620, 720, 35, 38, 44, 242);
             static const char* const titles[] = {"Honeydew", "Affichage", "Performances", "États"};
-            Ui::DrawText(renderer, titles[page], 40, 22, Ui::Text, Ui::Big);
+            Ui::DrawText(renderer, I18n::Tr(titles[page]), 40, 22, Ui::Text, Ui::Big);
             if (page == PageStates)
             {
                 Ui::Fill(renderer, 620, 0, 660, 720, 10, 14, 22, 200);
@@ -1189,17 +1203,17 @@ int main(int argc, char** argv)
                 if (ReadThumb(tp, px, tw, th))
                 {
                     Ui::DrawImage(renderer, tp + FileDate(tp), px.data(), tw, th, 760, 100, 384, 576, true);
-                    Ui::DrawText(renderer, "État " + std::to_string(sl) + "  " + FileDate(tp), 952, 40, Ui::TextDim, Ui::Small, 380, 1);
+                    Ui::DrawText(renderer, I18n::Tr("État ") + std::to_string(sl) + "  " + FileDate(tp), 952, 40, Ui::TextDim, Ui::Small, 380, 1);
                 }
                 else
-                    Ui::DrawText(renderer, "État " + std::to_string(sl) + " : aucune image", 952, 380, Ui::TextDim, Ui::Small, 380, 1);
+                    Ui::DrawText(renderer, I18n::Tr("État ") + std::to_string(sl) + I18n::Tr(" : aucune image"), 952, 380, Ui::TextDim, Ui::Small, 380, 1);
             }
             if (page == PageMain) Ui::DrawText(renderer, SWITCH_APP_VERSION, 40 + Ui::TextWidth("Honeydew", Ui::Big) + 12, 36, Ui::TextDim, Ui::Small);
             Ui::Fill(renderer, 20, 84, 580, 1, 90, 96, 106);
             Ui::DrawList(renderer, items, pageSt[page], 16, 96, 580, 10, 54);
             Ui::Fill(renderer, 20, 646, 580, 1, 90, 96, 106);
             if (!note.empty()) Ui::DrawText(renderer, note, 40, 606, Ui::AccentText, Ui::Small, 560);
-            Ui::DrawText(renderer, page == PageMain ? UI_A " Valider   " UI_DPAD_LR " Changer   " UI_B " Reprendre" : UI_A " / " UI_DPAD_LR " Changer   " UI_B " Retour", 40, 666, Ui::Text, Ui::Small, 570);
+            Ui::DrawText(renderer, page == PageMain ? I18n::Tr(UI_A " Valider   " UI_DPAD_LR " Changer   " UI_B " Reprendre") : I18n::Tr(UI_A " / " UI_DPAD_LR " Changer   " UI_B " Retour"), 40, 666, Ui::Text, Ui::Small, 570);
             GfxPresent(renderer);
             Ui::Trim();
 
@@ -1340,7 +1354,7 @@ int main(int argc, char** argv)
                         else disp.Swap = !disp.Swap;
                         computeLayout();
                         saveUi();
-                        showNote(std::string("Disposition ") + LayoutName(disp.Layout) + (disp.Swap ? (disp.Layout == 2 ? ", grand écran : bas" : ", inversée") : ""));
+                        showNote(std::string(I18n::Tr("Disposition ")) + LayoutName(disp.Layout) + (disp.Swap ? (disp.Layout == 2 ? I18n::Tr(", grand écran : bas") : I18n::Tr(", inversée")) : ""));
                     }
                     else if (b == 1)
                         running = false;   // ZL + ZR + B: quit (the state is saved in slot 0)
@@ -1598,7 +1612,7 @@ int main(int argc, char** argv)
                     gpuTex = 0;
                     saveUi();
                     logAsync("renderer: %d.%d screen sections per frame, switched to software rendering for this game\n", sectionsTenths / 10, sectionsTenths % 10);
-                    showNote("Rendu logiciel pour ce jeu (plus rapide ici), réglable dans le menu");
+                    showNote(I18n::Tr("Rendu logiciel pour ce jeu (plus rapide ici), réglable dans le menu"));
                     noteUntil = now + std::chrono::seconds(5);
                 }
                 else applyRenderer(true);

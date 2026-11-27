@@ -1,5 +1,5 @@
 // Host test of the control profiles and of the right stick -> touch modes:
-//   g++ -std=c++17 -o /tmp/controls_test tests/controls_test.cpp Controls.cpp && /tmp/controls_test
+//   g++ -std=c++17 -o /tmp/controls_test tests/controls_test.cpp Controls.cpp Language.cpp && /tmp/controls_test
 #include <stdio.h>
 #include <map>
 #include <string>
